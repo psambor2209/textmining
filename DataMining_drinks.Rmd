@@ -1,0 +1,516 @@
+```{r}
+install.packages("tm")
+install.packages("SnowballC")
+install.packages("ggplot2")
+install.packages("wordcloud")
+```
+
+```{r}
+#ustalamy katalog roboczy
+setwd("C:/Users/Karolina/Desktop/Data Mining")
+wd<- "C:/Users/Karolina/Desktop/Data Mining"
+```
+
+```{r}
+knitr::opts_chunk$set(root.dir = 'C:/Users/Karolina/Desktop/Data Mining')
+```
+
+```{r}
+getwd()
+```
+
+
+```{r}
+dir (wd)
+```
+
+```{r}
+library(NLP)
+library(tm)
+```
+
+```{r}
+docs <- Corpus(DirSource(wd))
+```
+
+```{r}
+docs <- tm_map(docs,removePunctuation)
+docs <- tm_map(docs, removeNumbers)
+#docs <- tm_map(docs, PlainTextDocument)
+writeLines(as.character(docs[[1]]))
+
+```
+
+```{r}
+#REMOVING PUNCTUATION MARKS AND NUMBERS
+docs <- tm_map(docs,removePunctuation)
+docs <- tm_map(docs, removeNumbers)
+#docs <- tm_map(docs, PlainTextDocument)
+writeLines(as.character(docs[[1]]))
+
+#REMOVE SPECIAL CHARACTERS
+for (j in seq(docs)) {
+docs[[j]] <- gsub("/", "", docs[[j]])
+docs[[j]] <- gsub("@", "", docs[[j]])
+docs[[j]] <- gsub("–", "", docs[[j]])
+docs[[j]] <- gsub("’", "", docs[[j]])
+docs[[j]] <- gsub("“", "", docs[[j]])
+docs[[j]] <- gsub("…", "", docs[[j]])
+docs[[j]] <- gsub("‘", "", docs[[j]])
+docs[[j]] <- gsub(")", "", docs[[j]])
+docs[[j]] <- gsub("”", "", docs[[j]])
+}
+#docs <- tm_map(docs, PlainTextDocument)
+writeLines(as.character(docs[[1]]))
+
+#CONVERTING TO LOWERCASE
+docs <- tm_map(docs, tolower)
+#docs <- tm_map(docs, PlainTextDocument)
+writeLines(as.character(docs[[1]]))
+
+#REMOVING “STOPWORDS” (COMMON WORDS)
+docs <- tm_map(docs, removeWords, stopwords("English"))
+#docs <- tm_map(docs, PlainTextDocument)
+writeLines(as.character(docs[[1]]))
+
+```
+
+```{r}
+#LOADING OUR STOPWORDS FILE
+StW <-read.table("C:/Users/Karolina/Desktop/StopWords/StopWords.txt")
+StW
+```
+
+```{r}
+StWW<-as.character(StW$V1)
+StWW
+docs <- tm_map(docs, removeWords, StWW)
+#docs <- tm_map(docs, PlainTextDocument)
+writeLines(as.character(docs[[1]]))
+```
+
+```{r}
+#REMOVING WHITESPACES 
+
+docs <- tm_map(docs, stripWhitespace)
+#docs <- tm_map(docs, PlainTextDocument)
+writeLines(as.character(docs[[1]]))
+
+```
+
+```{r}
+#STEMMING
+library(SnowballC)
+stemDocument("modelling", language = "english")
+stemDocument("modeller", language = "english")
+stemDocument("models", language = "english")
+
+for (j in seq(docs)) {
+ docs[[j]]<-stemDocument(docs[[j]], language = "english")
+}
+#docs <- tm_map(docs, PlainTextDocument)
+writeLines(as.character(docs[[1]]))
+```
+
+```{r}
+#THE DOCUMENT TERM MATRIX
+dtm <- DocumentTermMatrix(docs)
+
+inspect(dtm)
+```
+
+```{r}
+#DTM -> TDM
+tdm <- t(dtm)
+tdm <- TermDocumentMatrix(docs)
+tdm 
+inspect(tdm[140:145,1:2])
+```
+
+```{r}
+# Limiting the length and frequency of the terms.
+dtmr <-DocumentTermMatrix(docs, control=list(wordLengths=c(3, 20),bounds = list(global = c(2, Inf))))
+dtmr
+```
+
+```{r}
+#REMOVING UNITERESTING AND INFREQUENT WORDS
+
+
+dtmr1 = removeSparseTerms(dtmr, 0.70)
+```
+
+```{r}
+#COMPARING THE LENGTH OF THE DOCS
+doc_length <- as.data.frame(rowSums(as.matrix(dtm)))
+doc_length
+max_length<-max(doc_length)
+max_length
+min_length<-min(doc_length)
+min_length
+aver_length<-mean(rowSums(as.matrix(dtm)))
+aver_length
+```
+
+```{r}
+#NORMALIZED DTM ELIMINATING DIFFERENCE IN DOC LENGTH
+nn<-rowSums(as.matrix(dtm))
+nn
+dtm_Norm<-dtm/nn
+
+```
+
+```{r}
+dtmr
+```
+
+```{r}
+#EXPORTING DTM MATRIX TO EXCEL
+m0 <- as.matrix(dtm)
+write.csv(m0, file="C:/Users/Karolina/Desktop/DTM/DocumentTermMatrix.csv")
+m1<-as.data.frame(as.matrix(dtm_Norm))
+write.csv(m1, file="C:/Users/Karolina/Desktop/DTM/DocumentTermMatrixNorm.csv")
+m2 <- as.matrix(dtmr)
+write.csv(m2, file="C:/Users/Karolina/Desktop/DTM/DocumentTermMatrix_1.csv")
+m3 <- as.matrix(dtmr1)
+write.csv(m3, file="C:/Users/Karolina/Desktop/DTM/SparseDocumentTermMatrix.csv")
+```
+
+```{r}
+#Calculate the cumulative frequencies of words across documents and sort as before
+
+freqr <- colSums(as.matrix(dtmr))
+length(freqr)
+freq <- sort(freqr, decreasing=TRUE)
+head(freq, 14)
+
+tail(freq, 14)
+```
+
+```{r}
+#WORDS AT LEAST 10 TIMES IN WHOLE CORPUS
+findFreqTerms(dtmr,lowfreq=20)
+```
+
+```{r}
+#RELATIONSHIP "STORI"
+findAssocs(dtmr,"stori",0.7)
+```
+
+```{r}
+#RELATIONSHIP TIME
+findAssocs(dtmr,"time",0.5)
+```
+
+
+```{r}
+#RELATIONSHIP DEAD
+findAssocs(dtmr,"dead",0.7)
+```
+
+
+```{r}
+freqr <- colSums(as.matrix(dtmr))
+length(freqr)
+freq <- sort(freqr, decreasing=TRUE)
+mk<-min(head(freq, 18))
+mk
+wf=data.frame(word=names(freq),freq=freq)
+library(ggplot2)
+# Full Zipf's law
+#dev.new(width = 30, height = 100, unit = "px") #could be useful
+p <- ggplot(subset(wf, freq>1), aes(x = reorder(word, -freq), y = freq))
+p <- p + geom_bar(stat="identity")
+p <- p + theme(axis.text.x=element_text(angle=45, hjust=1))
+p
+# Zipf's law with minimal frequency = MK
+#dev.new(width = 30, height = 100, unit = "px") #could be useful
+p <- ggplot(subset(wf, freq>mk), aes(x = reorder(word, -freq), y = freq))
+p <- p + geom_bar(stat="identity")
+p <- p + theme(axis.text.x=element_text(angle=45, hjust=1))
+p
+```
+
+```{r}
+library(wordcloud)
+set.seed(42)
+wordcloud(names(freq), freq, min.freq=10, scale=c(2.5, .5), colors=brewer.pal(6, "Dark2"),
+          random.order = FALSE )
+```
+
+```{r}
+#N_GRAMS
+docs_1 <- VCorpus(DirSource(wd))
+docs_1
+docs_1<- tm_map(docs_1,removePunctuation)
+docs_1<- tm_map(docs_1, removeNumbers)
+for (j in seq(docs_1)) {
+ docs_1 [[j]] <- gsub("/", "", docs_1[[j]])
+ docs_1 [[j]] <- gsub("@", "", docs_1[[j]])
+ docs_1 [[j]] <- gsub("–", "", docs_1[[j]])
+ docs_1 [[j]] <- gsub("’", "", docs_1[[j]])
+ docs_1 [[j]] <- gsub("“", " ", docs_1[[j]])
+ docs_1 [[j]] <- gsub("…", "", docs_1[[j]])
+ docs_1 [[j]] <- gsub("‘", "", docs_1[[j]])
+ docs_1 [[j]] <- gsub(")", "", docs_1[[j]])
+ docs_1 [[j]] <- gsub("”", "", docs_1[[j]])
+}
+docs_1<- tm_map(docs_1, tolower)
+docs_1<- tm_map(docs_1, removeWords, stopwords("English"))
+StW<-read.table("C:/Users/Karolina/Desktop/StopWords/StopWords.txt")
+StWW<-as.character(StW$V1)
+StWW
+docs_1<- tm_map(docs_1, removeWords, StWW)
+docs_1<- tm_map(docs_1, stripWhitespace)
+for (j in seq(docs_1)) {
+ docs_1[[j]]<-stemDocument(docs_1[[j]], language = "english")
+}
+docs_1<- tm_map(docs_1, PlainTextDocument) 
+```
+
+```{r}
+NgramTokenizer = function(x) {
+ unlist(lapply(ngrams(words(x), 2), paste, collapse = " "),
+ use.names = FALSE)
+}
+dtm_n <- DocumentTermMatrix(docs_1, control = list(tokenize = NgramTokenizer))
+dtm_n
+#filenames <- list.files(getwd(),pattern="*.txt")
+#filenames <-c(filenames)
+#rownames(dtm_n)<-filenames
+
+```
+
+```{r}
+freq_n <- sort(colSums(as.matrix(dtm_n)), decreasing=TRUE)
+head(freq_n, 15)
+mk<-min(head(freq_n, 15))
+tail(freq_n, 15)
+m<-as.matrix(dtm_n)
+write.csv(m, file="C:/Users/Karolina/Desktop/DTM/N_DocumentTermMatrix.csv")
+#___________Building the Histogtram (zipf’s law)___________________
+wf=data.frame(word=names(freq_n),freq=freq_n)
+wf
+p <- ggplot(subset(wf, freq>=mk), aes(x = reorder(word, -freq), y = freq))
+p <- p + geom_bar(stat="identity")+ ggtitle("Histogram of Bigrams for Opinions") +labs(x="Bi
+-grams",y="Frequency")
+p <- p + theme(axis.text.x=element_text(angle=90, hjust=1, size=16))
+p
+
+```
+
+```{r}
+#CLUSTERING
+install.packages ("cluster")
+install.packages ("fpc")
+
+```
+
+```{r}
+library(tm)
+library(SnowballC)
+library(ggplot2)
+library(wordcloud)
+library(cluster)
+library(fpc)
+
+```
+
+
+```{r}
+MyData <-read.csv("C:/Users/Karolina/Desktop/DTM/DocumentTermMatrix.csv",
+ header = TRUE, #are there column names in 1st row?
+ sep = ",", #what separates rows?
+ strip.white = TRUE, #strip out extra white space in strings.
+ fill = TRUE, #fill in rows that have unequal numbers of columns
+ comment.char = "#", #character used for comments that should not be read in
+ stringsAsFactors = FALSE #Another control for deciding whether characters should be converted to factor
+ )
+
+```
+
+```{r}
+dtm1 = as.data.frame.matrix(MyData)
+dtm1 [1:20,1:10]
+dtm<-dtm1[,-1]
+
+```
+```{r}
+
+tdm<- t(dtm) # t(dtm) – transpose matrix DTM into TDM
+tf <- as.matrix(tdm)
+idf <- log(ncol(tf) / (rowSums(tf != 0)))
+
+
+```
+
+```{r}
+# words with highest and lowerst IDF
+idf_sort <- sort(idf, decreasing=FALSE)
+head(idf_sort, 15)
+tail(idf_sort, 15)
+# building tf-idf
+idf1 <- diag(idf)
+tf_idf <- crossprod(tf, idf1)
+colnames(tf_idf) <- rownames(tf)
+write.csv(as.matrix(tf_idf),file="C:/Users/Karolina/Desktop/DTM/TFIDF.csv")
+tf_idf_t<-t(tf_idf) #transposed matrix tf_idf
+tf_idf_t [280:288,1:3]
+```
+
+```{r}
+library(wordcloud)
+freq <- colSums(as.matrix(tf_idf), na.rm = FALSE)
+dev.new(width = 100, height = 100, unit = "px") # if you need
+set.seed(42)
+wordcloud(names(freq),freq, max.words=30, scale=c(2, .5), colors=brewer.pal(1,
+"Dark2"))
+# Second view of wordcloud
+freq =
+data.frame(sort(colSums(as.matrix(tf_idf)),
+decreasing=TRUE))
+wordcloud(rownames(freq), freq[,1],
+max.words=30, scale=c(2, .5), colors=brewer.pal(1,
+"Dark2"))
+
+suppressWarnings(print(freq))
+
+```
+
+```{r}
+setwd("C:/Users/Karolina/Desktop/Data Mining")
+```
+
+```{r}
+setwd("C:/Users/Karolina/Desktop/Data Mining")
+filenames <-
+list.files(getwd(),pattern="*.txt")
+filenames <-c(filenames)
+filenames
+rownames(dtm)<-filenames
+```
+
+```{r}
+setwd("C:/Users/Karolina/Desktop/Data Mining")
+d1 <- dist(dtm, method="euclidian")
+# make the clustering
+fit <- hclust(d=d1, method="complete")
+fit
+plot.new()
+plot(fit, hang=-1, cex=0.5)
+# for a receiving the different dendrograms view ry substituting: method="ward.D" and any other form list above:
+groups <- cutree(fit, k=3) # "k" defines the number of clusters you are using
+rect.hclust(fit, k=3, border="red") # draw dendogram with red borders around the 4 clusters
+```
+
+```{r}
+setwd("C:/Users/Karolina/Desktop/Data Mining")
+filenames <-
+list.files(getwd(),pattern="*.txt")
+filenames <-c(filenames)
+filenames
+rownames(dtm)<-filenames
+```
+```{r}
+getwd()
+```
+
+
+```{r}
+#transform the format of dtm for possibility to do the RemoveSparseTerms
+tf_idf<-
+as.DocumentTermMatrix(tf_idf,weighting =
+weightTf)
+tf_idf
+setwd("C:/Users/Karolina/Desktop/Data Mining")
+d1 <- dist(tf_idf, method="euclidian")
+fit1 <- hclust(d=d1, method="complete")
+fit1
+plot.new()
+plot(fit1, hang=-1, cex=0.5)
+groups <- cutree(fit1, k=4)
+rect.hclust(fit1, k=4, border="red")
+# remove the sparsity of the matrix dtm
+tf_idf_s<-removeSparseTerms(tf_idf, 0.35)
+tf_idf_s
+d1 <- dist(tf_idf_s, method="euclidian")
+fit1 <- hclust(d=d1, method="complete")
+fit1
+plot.new()
+plot(fit1, hang=-1, cex=0.5)
+groups <- cutree(fit1, k=4)
+rect.hclust(fit1, k=4, border="red")
+```
+
+```{r}
+install.packages("igraph")
+install.packages("topicmodels")
+```
+```{r}
+library("topicmodels")
+library("igraph")
+```
+```{r}
+mm_s = as.matrix(dtm)
+mm<-as.matrix(mm_s[1:5,])
+#mm<-as.matrix(mm_s) # for using all documents
+#function cosineSim compute cosine similarity between document vectors
+#converting to distance matrix sets diagonal elements to 0
+cosineSim <- function(x){
+ as.dist(x%*%t(x)/(sqrt(rowSums(x^2) %*% t(rowSums(x^2)))))
+}
+#compute cosine similarity between document vectors
+cs <- cosineSim(mm)
+cs
+```
+```{r}
+write.csv(as.matrix(cs),file="C:/Users/Karolina/Desktop/DTM/DocumentCosine.csv")
+#create the adjacency matrix
+min_cos<-0.2
+cs[cs < min_cos] <- 0
+cs <- round(cs,3)
+#save adjacency matrix to *.csv file
+write.csv(as.matrix(cs),file="C:/Users/Karolina/Desktop/DTM/DocumentAdjacencyMatrix.csv")
+cs
+```
+```{r}
+dat<-read.csv("C:/Users/Karolina/Desktop/DTM/DocumentAdjacencyMatrix.csv",
+ header = TRUE,
+ sep = ",",
+ colClasses = NA,
+ na.string = "NA",
+ skip = 0,
+ strip.white = TRUE,
+ fill = TRUE,
+ comment.char = "#",
+ stringsAsFactors = FALSE
+ )
+mm1 = as.data.frame.matrix(dat)
+mm1=mm1[,-1]
+```
+
+```{r}
+filenames <- list.files(getwd(),pattern="*.txt")
+filenames <-c(filenames[1:5])
+# filenames <-c(filenames) # for using all documents
+filenames
+#converting mm1 into matrix format
+rownames(mm1)<-filenames
+cs<-as.matrix(mm1)
+cs
+
+```
+```{r}
+#initializing Igraph package
+library(igraph)
+#Creating undirected weighted graph
+g=graph.adjacency(cs,mode="undirected",weighted=TRUE)
+g
+#Checking the undirected weighted graph attributes
+list.vertex.attributes(g)
+list.edge.attributes(g)
+V(g)$name
+E(g)$weight
+```
+
+
